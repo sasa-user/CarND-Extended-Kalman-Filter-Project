@@ -8,6 +8,12 @@ using Eigen::VectorXd;
  *   VectorXd or MatrixXd objects with zeros upon creation.
  */
 
+namespace utils {
+	void NormalizeAngle(double& phi) {
+		phi = atan2(sin(phi), cos(phi));
+	}
+}
+
 KalmanFilter::KalmanFilter() {}
 
 KalmanFilter::~KalmanFilter() {}
@@ -26,16 +32,52 @@ void KalmanFilter::Predict() {
   /**
    * TODO: predict the state
    */
+	x_ = F_ * x_;
+	MatrixXd Ft = F_.transpose();
+	P_ = F_ * P_ * Ft + Q_;
+}
+
+void KalmanFilter::UpdateCommon(const VectorXd& y)
+{
+	const MatrixXd PHt = P_ * H_.transpose();
+	const MatrixXd S = H_ * PHt + R_;
+	const MatrixXd K = PHt * S.inverse();
+
+	// New state
+	x_ += K * y;
+	P_ -= K * H_ * P_;
 }
 
 void KalmanFilter::Update(const VectorXd &z) {
   /**
    * TODO: update the state by using Kalman Filter equations
    */
+	VectorXd y = z - H_ * x_;
+
+  	UpdateCommon(y);
 }
 
 void KalmanFilter::UpdateEKF(const VectorXd &z) {
   /**
    * TODO: update the state by using Extended Kalman Filter equations
    */
+  
+  	// Converting to polar coordinates
+	float px = x_(0);
+	float py = x_(1);
+	float vx = x_(2);
+	float vy = x_(3);
+
+	double rho     = sqrt(px * px + py * py);
+	double phi	   = atan2(py, px);
+	double rho_dot = (px * vx + py * vy) / std::max(rho, 0.0001);
+
+	VectorXd z_pred = VectorXd(3);
+	z_pred << rho, phi, rho_dot;
+
+	VectorXd y = z - z_pred;
+
+	utils::NormalizeAngle(y(1));
+
+  	UpdateCommon(y);
 }

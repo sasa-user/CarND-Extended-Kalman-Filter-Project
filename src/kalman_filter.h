@@ -34,6 +34,8 @@ class KalmanFilter {
    */
   void Predict();
 
+  void UpdateCommon(const Eigen::VectorXd& y);
+
   /**
    * Updates the state by using standard Kalman Filter equations
    * @param z The measurement at k+1
